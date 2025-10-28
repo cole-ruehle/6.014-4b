@@ -214,7 +214,40 @@ export const useRouteStore = defineStore('routes', () => {
     error.value = null
     
     try {
-      const results = await calculateRoute(origin, destination, mode, preferences)
+      // If origin and destination are strings, geocode them first
+      let originCoords = origin
+      let destinationCoords = destination
+      
+      if (typeof origin === 'string') {
+        console.log('🔍 Geocoding origin:', origin)
+        const originResults = await searchLocations(origin, { limit: 1 })
+        if (!originResults || originResults.length === 0) {
+          throw new Error('Could not find coordinates for origin')
+        }
+        originCoords = {
+          lat: originResults[0].location.lat,
+          lon: originResults[0].location.lon,
+          address: originResults[0].address || origin,
+          name: originResults[0].name || origin
+        }
+      }
+      
+      if (typeof destination === 'string') {
+        console.log('🔍 Geocoding destination:', destination)
+        const destinationResults = await searchLocations(destination, { limit: 1 })
+        if (!destinationResults || destinationResults.length === 0) {
+          throw new Error('Could not find coordinates for destination')
+        }
+        destinationCoords = {
+          lat: destinationResults[0].location.lat,
+          lon: destinationResults[0].location.lon,
+          address: destinationResults[0].address || destination,
+          name: destinationResults[0].name || destination
+        }
+      }
+      
+      console.log('🚀 Calling calculateRoute with:', { origin: originCoords, destination: destinationCoords })
+      const results = await calculateRoute(originCoords, destinationCoords, mode, preferences)
       calculatedRoutes.value = [results]
       return results
     } catch (err) {
@@ -231,7 +264,40 @@ export const useRouteStore = defineStore('routes', () => {
     error.value = null
     
     try {
-      const results = await calculateRoute(origin, destination, 'multimodal', options)
+      // If origin and destination are strings, geocode them first
+      let originCoords = origin
+      let destinationCoords = destination
+      
+      if (typeof origin === 'string') {
+        console.log('🔍 Geocoding origin for multimodal:', origin)
+        const originResults = await searchLocations(origin, { limit: 1 })
+        if (!originResults || originResults.length === 0) {
+          throw new Error('Could not find coordinates for origin')
+        }
+        originCoords = {
+          lat: originResults[0].location.lat,
+          lon: originResults[0].location.lon,
+          address: originResults[0].address || origin,
+          name: originResults[0].name || origin
+        }
+      }
+      
+      if (typeof destination === 'string') {
+        console.log('🔍 Geocoding destination for multimodal:', destination)
+        const destinationResults = await searchLocations(destination, { limit: 1 })
+        if (!destinationResults || destinationResults.length === 0) {
+          throw new Error('Could not find coordinates for destination')
+        }
+        destinationCoords = {
+          lat: destinationResults[0].location.lat,
+          lon: destinationResults[0].location.lon,
+          address: destinationResults[0].address || destination,
+          name: destinationResults[0].name || destination
+        }
+      }
+      
+      console.log('🚀 Calling calculateRoute for multimodal with:', { origin: originCoords, destination: destinationCoords })
+      const results = await calculateRoute(originCoords, destinationCoords, 'multimodal', options)
       calculatedRoutes.value = [results]
       return results
     } catch (err) {

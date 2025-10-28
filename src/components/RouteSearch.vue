@@ -567,21 +567,23 @@ const calculateAdvancedRoute = async () => {
     let response
     let destination = advancedParams.value.destination
     
+    // First, geocode the start location to get coordinates
+    console.log('🔍 Geocoding start location:', searchParams.value.startLocation)
+    const startLocationResults = await searchLocations(searchParams.value.startLocation, { limit: 1 })
+    
+    if (!startLocationResults || startLocationResults.length === 0) {
+      throw new Error('Could not find coordinates for starting location')
+    }
+    
+    const startLocation = startLocationResults[0]
+    console.log('📍 Start location coordinates:', startLocation)
+    
     // If no destination provided, find the nearest hiking location
     if (!destination.trim()) {
       console.log('🔍 No destination provided, finding nearest hiking location...')
       
-      // First, geocode the start location to get coordinates
-      const startCoords = await reverseGeocode(0, 0) // This would need actual coordinates
-      if (!startCoords || !startCoords.location) {
-        throw new Error('Could not find coordinates for starting location')
-      }
-      
-      const startLocation = startCoords.location
-      console.log('📍 Start location coordinates:', startLocation)
-      
       // Find nearby trails/POIs
-      const nearbyTrails = await getNearbyLocations(startLocation, { 
+      const nearbyTrails = await getNearbyLocations(startLocation.location, { 
         radius: 20000, 
         types: ['trail', 'trailhead'], 
         limit: 20 
@@ -604,17 +606,45 @@ const calculateAdvancedRoute = async () => {
       }
     }
     
+    // Geocode the destination
+    console.log('🔍 Geocoding destination:', destination)
+    const destinationResults = await searchLocations(destination, { limit: 1 })
+    
+    if (!destinationResults || destinationResults.length === 0) {
+      throw new Error('Could not find coordinates for destination')
+    }
+    
+    const destinationLocation = destinationResults[0]
+    console.log('📍 Destination coordinates:', destinationLocation)
+    
+    // Prepare the data in the format expected by the backend
+    const origin = {
+      lat: startLocation.location.lat,
+      lon: startLocation.location.lon,
+      address: startLocation.address || searchParams.value.startLocation,
+      name: startLocation.name || searchParams.value.startLocation
+    }
+    
+    const destinationCoords = {
+      lat: destinationLocation.location.lat,
+      lon: destinationLocation.location.lon,
+      address: destinationLocation.address || destination,
+      name: destinationLocation.name || destination
+    }
+    
+    console.log('🚀 Calling calculateRoute with:', { origin, destination: destinationCoords })
+    
     if (advancedParams.value.routeType === 'hiking') {
       response = await calculateRoute(
-        searchParams.value.startLocation,
-        destination,
+        origin,
+        destinationCoords,
         'hiking',
         advancedParams.value.preferences
       )
     } else {
       response = await calculateRoute(
-        searchParams.value.startLocation,
-        destination,
+        origin,
+        destinationCoords,
         'multimodal',
         advancedParams.value.preferences
       )
@@ -699,20 +729,23 @@ const getAlternatives = async () => {
   try {
     let destination = advancedParams.value.destination
     
+    // First, geocode the start location to get coordinates
+    console.log('🔍 Geocoding start location for alternatives:', searchParams.value.startLocation)
+    const startLocationResults = await searchLocations(searchParams.value.startLocation, { limit: 1 })
+    
+    if (!startLocationResults || startLocationResults.length === 0) {
+      throw new Error('Could not find coordinates for starting location')
+    }
+    
+    const startLocation = startLocationResults[0]
+    console.log('📍 Start location coordinates:', startLocation)
+    
     // If no destination provided, find the nearest hiking location
     if (!destination.trim()) {
       console.log('🔍 Finding nearest hiking location for alternatives...')
       
-      // First, geocode the start location to get coordinates
-      const startCoords = await reverseGeocode(0, 0) // This would need actual coordinates
-      if (!startCoords || !startCoords.location) {
-        throw new Error('Could not find coordinates for starting location')
-      }
-      
-      const startLocation = startCoords.location
-      
       // Find nearby trails/POIs
-      const nearbyTrails = await getNearbyLocations(startLocation, { 
+      const nearbyTrails = await getNearbyLocations(startLocation.location, { 
         radius: 20000, 
         types: ['trail', 'trailhead'], 
         limit: 20 
@@ -733,6 +766,34 @@ const getAlternatives = async () => {
         console.log('🎯 Using fallback hiking location for alternatives:', destination)
       }
     }
+    
+    // Geocode the destination
+    console.log('🔍 Geocoding destination for alternatives:', destination)
+    const destinationResults = await searchLocations(destination, { limit: 1 })
+    
+    if (!destinationResults || destinationResults.length === 0) {
+      throw new Error('Could not find coordinates for destination')
+    }
+    
+    const destinationLocation = destinationResults[0]
+    console.log('📍 Destination coordinates:', destinationLocation)
+    
+    // Prepare the data in the format expected by the backend
+    const origin = {
+      lat: startLocation.location.lat,
+      lon: startLocation.location.lon,
+      address: startLocation.address || searchParams.value.startLocation,
+      name: startLocation.name || searchParams.value.startLocation
+    }
+    
+    const destinationCoords = {
+      lat: destinationLocation.location.lat,
+      lon: destinationLocation.location.lon,
+      address: destinationLocation.address || destination,
+      name: destinationLocation.name || destination
+    }
+    
+    console.log('🚀 Calling getAlternativeRoutes with:', { origin, destination: destinationCoords })
     
     const response = await getAlternativeRoutes(
       'route-id', // This would be the actual route ID

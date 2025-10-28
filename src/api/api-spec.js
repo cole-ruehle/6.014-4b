@@ -1,7 +1,7 @@
 // API Specification for Enhanced Hiking App Backend
 // Backend running at: http://localhost:8000/HikingApp
 
-export const API_BASE_URL = 'http://localhost:8000/api/HikingApp'
+export const API_BASE_URL = 'http://localhost:8000/HikingApp'
 
 // Free Navigation Services
 export const OPENROUTE_SERVICE_API_KEY = '5b3ce3597851110001cf6248e8b8b8b8b8b8b8b8' // Free API key
