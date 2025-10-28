@@ -37,7 +37,19 @@
       </button>
     </div>
     
-    <div class="routes-container">
+    <div v-if="filteredRoutes.length === 0" class="no-routes">
+      <div class="no-routes-icon">🛤️</div>
+      <h3>No routes found</h3>
+      <p>Try adjusting your search criteria or filters</p>
+      <div class="debug-info">
+        <p><strong>Debug Info:</strong></p>
+        <p>Total routes: {{ props.routes.length }}</p>
+        <p>Filtered routes: {{ filteredRoutes.length }}</p>
+        <p>Current page: {{ currentPage }}</p>
+      </div>
+    </div>
+    
+    <div class="routes-container" v-else>
       <div 
         v-for="route in filteredRoutes" 
         :key="route.id"
@@ -125,6 +137,7 @@ const filters = ref({
 const transportModes = ['bus', 'car', 'walk']
 
 const filteredRoutes = computed(() => {
+  console.log('RouteList - props.routes:', props.routes)
   let filtered = [...props.routes]
   
   if (filters.value.difficulty) {
@@ -141,7 +154,9 @@ const filteredRoutes = computed(() => {
   
   const start = (currentPage.value - 1) * itemsPerPage
   const end = start + itemsPerPage
-  return filtered.slice(start, end)
+  const result = filtered.slice(start, end)
+  console.log('RouteList - filtered routes:', result)
+  return result
 })
 
 const totalPages = computed(() => {
@@ -173,6 +188,9 @@ const applyFilters = () => {
   currentPage.value = 1
   showFilters.value = false
 }
+
+// Debug: Log when component is created
+console.log('RouteList component created with routes:', props.routes)
 </script>
 
 <style scoped>
@@ -384,6 +402,39 @@ const applyFilters = () => {
 
 .dot.active {
   background: #3498db;
+}
+
+.no-routes {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #7f8c8d;
+}
+
+.no-routes-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.no-routes h3 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.no-routes p {
+  margin-bottom: 1rem;
+}
+
+.debug-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-top: 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.debug-info p {
+  margin: 0.25rem 0;
 }
 
 @media (max-width: 768px) {

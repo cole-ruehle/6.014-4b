@@ -5,7 +5,11 @@ import {
   getRouteDetails, 
   getSavedRoutes, 
   saveRoute, 
-  unsaveRoute 
+  unsaveRoute,
+  calculateRoute,
+  searchLocations,
+  getNearbyLocations,
+  getSearchSuggestions
 } from '../api/api-spec.js'
 
 export const useRouteStore = defineStore('routes', () => {
@@ -20,24 +24,30 @@ export const useRouteStore = defineStore('routes', () => {
   })
   const loading = ref(false)
   const error = ref(null)
+  
+  // Enhanced state for mapping
+  const pois = ref([])
+  const searchSuggestions = ref([])
+  const mapCenter = ref({ lat: 42.3601, lon: -71.0589 })
+  const selectedLocation = ref(null)
+  const calculatedRoutes = ref([])
 
   // Getters
   const filteredRoutes = computed(() => {
-    return routes.value.filter(route => {
-      if (searchParams.value.startLocation && 
-          !route.startLocation.toLowerCase().includes(searchParams.value.startLocation.toLowerCase())) {
-        return false
-      }
-      if (searchParams.value.duration && 
-          Math.abs(route.duration - searchParams.value.duration) > 0.5) {
-        return false
-      }
+    console.log('🔍 RouteStore: Filtering routes. Total routes:', routes.value.length)
+    console.log('🔍 RouteStore: Search params:', searchParams.value)
+    
+    const filtered = routes.value.filter(route => {
+      // Only filter by hiking trail if specified, otherwise show all routes
       if (searchParams.value.hikingTrail && 
           !route.name.toLowerCase().includes(searchParams.value.hikingTrail.toLowerCase())) {
         return false
       }
       return true
     })
+    
+    console.log('🔍 RouteStore: Filtered routes:', filtered.length)
+    return filtered
   })
 
   const isRouteSaved = computed(() => (routeId) => {
@@ -46,18 +56,30 @@ export const useRouteStore = defineStore('routes', () => {
 
   // Actions
   const searchForRoutes = async (params = {}) => {
+    console.log('🚀 RouteStore: Starting searchForRoutes')
     loading.value = true
     error.value = null
     
     try {
       const searchData = { ...searchParams.value, ...params }
-      const results = await searchRoutes(searchData)
+      // Update the stored search params
+      searchParams.value = searchData
+      console.log('🔍 RouteStore: Searching with params:', searchData)
+      
+      // Use real backend API call - searchPlaces for finding hiking locations
+      console.log('📡 RouteStore: Attempting API call...')
+      const results = await searchPlaces(searchData.startLocation || 'Boston', { limit: 10 })
+      console.log('✅ RouteStore: API search results:', results)
+      
       routes.value = results
+      console.log('📝 RouteStore: Routes set to:', routes.value)
+      console.log('📊 RouteStore: Number of routes:', routes.value.length)
     } catch (err) {
       error.value = err.message
-      console.error('Failed to search routes:', err)
+      console.error('❌ RouteStore: Failed to search routes:', err)
     } finally {
       loading.value = false
+      console.log('🏁 RouteStore: Search completed, loading set to false')
     }
   }
 
@@ -133,6 +155,104 @@ export const useRouteStore = defineStore('routes', () => {
     error.value = null
   }
 
+  // Enhanced methods for mapping functionality
+  const searchForPlaces = async (query, center = null, radius = 10) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const results = await searchLocations(query, { center, radius, limit: 10 })
+      return results
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to search places:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const findNearbyTrails = async (center, radius = 10, difficulty = null) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const results = await getNearbyLocations(center, { 
+        radius, 
+        types: ['trail', 'trailhead'], 
+        limit: 20 
+      })
+      return results
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to find trails:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const loadPOIs = async (center, types = ['trail', 'trailhead'], radius = 5) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const results = await getNearbyLocations(center, { radius, types, limit: 20 })
+      pois.value = results || []
+      return results
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to load POIs:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const calculateRouteData = async (origin, destination, mode = 'hiking', preferences = {}) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const results = await calculateRoute(origin, destination, mode, preferences)
+      calculatedRoutes.value = [results]
+      return results
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to calculate route:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const calculateMultiModalRouteData = async (origin, destination, options = {}) => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      const results = await calculateRoute(origin, destination, 'multimodal', options)
+      calculatedRoutes.value = [results]
+      return results
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to calculate multi-modal route:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const setMapCenter = (center) => {
+    mapCenter.value = center
+  }
+
+  const setSelectedLocation = (location) => {
+    selectedLocation.value = location
+    mapCenter.value = location
+  }
+
+
   return {
     // State
     routes,
@@ -141,6 +261,11 @@ export const useRouteStore = defineStore('routes', () => {
     searchParams,
     loading,
     error,
+    pois,
+    searchSuggestions,
+    mapCenter,
+    selectedLocation,
+    calculatedRoutes,
     
     // Getters
     filteredRoutes,
@@ -152,6 +277,15 @@ export const useRouteStore = defineStore('routes', () => {
     loadSavedRoutes,
     toggleSaveRoute,
     updateSearchParams,
-    clearError
+    clearError,
+    
+    // Enhanced actions
+    searchForPlaces,
+    findNearbyTrails,
+    loadPOIs,
+    calculateRoute: calculateRouteData,
+    calculateMultiModalRoute: calculateMultiModalRouteData,
+    setMapCenter,
+    setSelectedLocation
   }
 })

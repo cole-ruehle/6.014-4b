@@ -35,15 +35,25 @@
     
     <div class="content-grid">
       <div class="directions-section">
-        <h3>Directions</h3>
+        <h3>Route Map</h3>
         <div class="map-container">
-          <div class="map-placeholder">
+          <HikingMap 
+            v-if="route.coordinates && route.coordinates.length > 0"
+            :center="mapCenter"
+            :route="route"
+            :height="'300px'"
+            @map-ready="handleMapReady"
+          />
+          <div v-else class="map-placeholder">
             <div class="route-path">
               <div class="route-line orange"></div>
               <div class="route-line red"></div>
               <div class="route-line blue"></div>
             </div>
             <div class="waypoint"></div>
+            <div class="no-route-message">
+              <p>No route data available for map display</p>
+            </div>
           </div>
         </div>
       </div>
@@ -89,7 +99,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import HikingMap from './HikingMap.vue'
 
 const props = defineProps({
   route: {
@@ -98,16 +109,28 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['route-saved', 'start-navigation', 'go-back'])
+const emit = defineEmits(['route-saved', 'start-navigation', 'go-back', 'route-selected'])
 
-const similarRoutes = computed(() => {
-  // Mock similar routes - in real app, this would come from API
-  return [
-    { id: '1', name: 'Short Trail', duration: 2 },
-    { id: '2', name: 'Medium Trail', duration: 4 },
-    { id: '3', name: 'Quick Walk', duration: 1 }
-  ]
+const mapCenter = computed(() => {
+  if (props.route && props.route.coordinates && props.route.coordinates.length > 0) {
+    const firstCoord = props.route.coordinates[0]
+    return { lat: firstCoord.lat, lon: firstCoord.lon }
+  }
+  return { lat: 42.3601, lon: -71.0589 }
 })
+const mapInstance = ref(null)
+
+const similarRoutes = ref([])
+
+const loadSimilarRoutes = async () => {
+  try {
+    // In a real implementation, this would call the backend API
+    // to get similar routes based on the current route
+    similarRoutes.value = []
+  } catch (error) {
+    console.error('Failed to load similar routes:', error)
+  }
+}
 
 const getPlaceholderImage = (index) => {
   const placeholders = ['🏔️', '🌲', '🏞️']
@@ -125,10 +148,18 @@ const startNavigation = () => {
 const selectSimilarRoute = (route) => {
   // In a real app, this would load the similar route details
   console.log('Selected similar route:', route)
+  // Emit event to parent to load the selected route
+  emit('route-selected', route)
 }
 
 const goBack = () => {
   emit('go-back')
+}
+
+const handleMapReady = (map) => {
+  mapInstance.value = map
+  console.log('🗺️ Map ready, route data:', props.route)
+  console.log('📍 Map center:', mapCenter.value)
 }
 </script>
 
@@ -298,6 +329,16 @@ const goBack = () => {
   height: 8px;
   background: #dc2626;
   border-radius: 50%;
+}
+
+.no-route-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
 }
 
 .instructions-list {
